@@ -4,6 +4,7 @@
       <template #header>
         <h2>登录</h2>
       </template>
+      <!-- 关键：ref="formRef" 必须绑定 -->
       <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
@@ -31,25 +32,51 @@ const router = useRouter()
 const authStore = useAuthStore()
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
-const formRef = ref(null)
+const formRef = ref(null)  // 必须定义，并与模板中的 ref 同名
 
+// 邮箱格式验证器
+const validateEmail = (rule, value, callback) => {
+  const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/
+  if (!value) {
+    callback(new Error('请输入邮箱'))
+  } else if (!emailRegex.test(value)) {
+    callback(new Error('请输入有效的邮箱地址（例如：user@example.com）'))
+  } else {
+    callback()
+  }
+}
+
+// 验证规则
 const rules = {
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  email: [{ validator: validateEmail, trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 const handleLogin = async () => {
   if (!formRef.value) return
+  // 这里会触发所有字段的验证，包括 validateEmail
   await formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
         const res = await login(form.email, form.password)
         authStore.setAuth(res.data.access_token, { email: form.email })
-        ElMessage.success('登录成功')
+        ElMessage.success({ message: '登录成功', duration: 2000 })
         router.push('/posts')
       } catch (err) {
-        ElMessage.error(err.response?.data?.detail || '登录失败')
+        // 处理后端返回的422错误（如邮箱格式不对）
+        if (err.response?.status === 422 && err.response?.data?.detail) {
+          const errors = err.response.data.detail
+          let errorMsg = ''
+          if (Array.isArray(errors)) {
+            errorMsg = errors.map(e => e.msg).join('；')
+          } else {
+            errorMsg = errors
+          }
+          ElMessage.error({ message: errorMsg, duration: 5000, showClose: true })
+        } else {
+          ElMessage.error({ message: err.response?.data?.detail || '登录失败', duration: 5000, showClose: true })
+        }
       } finally {
         loading.value = false
       }

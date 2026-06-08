@@ -5,7 +5,7 @@
         <h2>文章列表</h2>
         <div>
           <span>欢迎，{{ authStore.user?.email || '用户' }}</span>
-          <el-button type="text" @click="logout">退出登录</el-button>
+          <el-button link @click="logout">退出登录</el-button>
         </div>
       </div>
     </el-header>
@@ -19,7 +19,7 @@
                 <el-input v-model="newPost.title"></el-input>
               </el-form-item>
               <el-form-item label="内容">
-                <el-input type="textarea" v-model="newPost.content" rows="4"></el-input>
+                <el-input type="textarea" v-model="newPost.content" :rows="4"></el-input>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="createPost" :loading="creating">发布</el-button>

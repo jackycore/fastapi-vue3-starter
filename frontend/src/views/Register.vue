@@ -34,8 +34,19 @@ const form = reactive({ email: '', username: '', password: '' })
 const loading = ref(false)
 const formRef = ref(null)
 
+const validateEmail = (rule, value, callback) => {
+  const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/
+  if (!value) {
+    callback(new Error('请输入邮箱'))
+  } else if (!emailRegex.test(value)) {
+    callback(new Error('请输入有效的邮箱地址（例如：user@example.com）'))
+  } else {
+    callback()
+  }
+}
+
 const rules = {
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  email: [{ validator: validateEmail, trigger: 'blur' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
@@ -47,10 +58,21 @@ const handleRegister = async () => {
       loading.value = true
       try {
         await register(form.email, form.username, form.password)
-        ElMessage.success('注册成功，请登录')
+        ElMessage.success({ message: '注册成功，请登录', duration: 3000 })
         router.push('/login')
       } catch (err) {
-        ElMessage.error(err.response?.data?.detail || '注册失败')
+        if (err.response?.status === 422 && err.response?.data?.detail) {
+          const errors = err.response.data.detail
+          let errorMsg = ''
+          if (Array.isArray(errors)) {
+            errorMsg = errors.map(e => e.msg).join('；')
+          } else {
+            errorMsg = errors
+          }
+          ElMessage.error({ message: errorMsg, duration: 5000, showClose: true })
+        } else {
+          ElMessage.error({ message: err.response?.data?.detail || '注册失败', duration: 5000, showClose: true })
+        }
       } finally {
         loading.value = false
       }
